@@ -126,26 +126,6 @@ draw_clock(SDL_Renderer *renderer,
     free(the_time);
 }
 
-// See https://curl.haxx.se/libcurl/c/getinmemory.html
-static size_t
-http_callback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-    size_t realsize = size * nmemb;
-    struct CurlData *mem = (struct CurlData *)userp;
-
-    mem->data = realloc(mem->data, mem->size + realsize + 1);
-    if (mem->data == NULL)
-    {
-	printf("not enough data (realloc returned NULL)\n");
-	return 0;
-    }
-
-    memcpy(&(mem->data[mem->size]), contents, realsize);
-    mem->size += realsize;
-    mem->data[mem->size] = 0;
-
-    return realsize;
-}
 
 void
 horizontal_separator(SDL_Renderer *renderer, int x, int y, int length, int alpha)
@@ -178,11 +158,9 @@ vertical_separator(SDL_Renderer *renderer, int x, int y, int length, int alpha)
 void
 thick_separator(SDL_Renderer *renderer, int x, int y, int length)
 {
-    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0xBB);
-    SDL_Rect left = {x, y - 5, 2, length + 10};
-    SDL_Rect right = {x + 2, y - 5, 2, length + 10};
-    SDL_RenderDrawRect(renderer, &left);
-    SDL_RenderDrawRect(renderer, &right);
+    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0xAA);
+    SDL_Rect bar = {x, y, 4, length};
+    SDL_RenderFillRect(renderer, &bar);
 }
 
 void
@@ -314,9 +292,9 @@ draw_sparklines(SDL_Renderer *renderer, struct price_map sparkline_prices[])
     int offset = 7;
     int left_edge = sparkline_left;
     int multiplier = 0;
+    const char *label = NULL;
 
     for (int i = 0; i < 8; i++) {
-
 	if (i < 4) {
 	    left_edge = sparkline_left;
 	    multiplier = i;
@@ -327,13 +305,48 @@ draw_sparklines(SDL_Renderer *renderer, struct price_map sparkline_prices[])
 	    multiplier = i - 4;
 
 	}
+
+	label = sparkline_prices[i].key;
+	if (!strcmp(label, "USB30Y_USD"))
+	{
+	    label = "T - BOND";
+	}
+	if (!strcmp(label, "SPX500_USD"))
+	{
+	    label = "SPX 500";
+	}
+	if (!strcmp(label, "XCU_USD"))
+	{
+	    label = "COPPER";
+	}
+	if (!strcmp(label, "EUR_USD"))
+	{
+	    label = "EUR USD";
+	}
+	if (!strcmp(label, "GBP_USD"))
+	{
+	    label = "GBP USD";
+	}
+	if (!strcmp(label, "USD_CAD"))
+	{
+	    label = "USD CAD";
+	}
+	if (!strcmp(label, "USD_JPY"))
+	{
+	    label = "USD JPY";
+	}
+	if (!strcmp(label, "USD_CHF"))
+	{
+	    label = "USD CHF";
+	}
+
 	draw_sparkline(renderer,
-		       sparkline_prices[i].key,
+		       label,
 		       sparkline_prices[i].value,
 		       left_edge,
 		       sparkline_top + multiplier * offset * GRID_EDGE);
     }
-        thick_separator(renderer,
+    thick_separator(renderer,
 		    GRID_X_OFFSET + GRID_EDGE * 31 + 1,
 		    GRID_Y_OFFSET + GRID_EDGE * 2,
 		    GRID_EDGE * 6);
@@ -368,13 +381,34 @@ draw_sparklines(SDL_Renderer *renderer, struct price_map sparkline_prices[])
 		    GRID_EDGE * 6);
 }
 
-struct price_map sparkline_prices[8];
+// See https://curl.haxx.se/libcurl/c/getinmemory.html
+static size_t
+http_callback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    size_t realsize = size * nmemb;
+    struct CurlData *mem = (struct CurlData *)userp;
 
-void
-pull_prices()
+    mem->data = realloc(mem->data, mem->size + realsize + 1);
+    if (mem->data == NULL)
+    {
+	printf("not enough data (realloc returned NULL)\n");
+	return 0;
+    }
+
+    memcpy(&(mem->data[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->data[mem->size] = 0;
+
+    return realsize;
+}
+
+struct json_object *
+curl(const char *url)
 {
     CURL *curl_handle;
     char auth_header[100];
+    struct json_object *result = NULL;
+
     if (snprintf(auth_header, 100, "Authorization: Bearer %s", access_token) >= 100)
     {
 	printf("Auth header overflow.");
@@ -391,50 +425,60 @@ pull_prices()
     chunk.data = malloc(1);
     chunk.size = 0;
 
-    char *url =
-	"https://api-fxtrade.oanda.com/v1/prices?instruments=EUR_USD%2CGBP_USD%2CUSD_JPY%2CUSD_CAD%2CUSD_CHF%2CSPX500_USD%2CXCU_USD%2CUSB30Y_USD";
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, http_callback);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "console/1.0");
-    slist = curl_slist_append(slist, auth_header);
 
+    slist = curl_slist_append(slist, auth_header);
     curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, slist);
+
     response_code = curl_easy_perform(curl_handle);
 
     if (response_code)
     {
 	fprintf(stderr, "curl_easy_perform() failed: %s\n",
 		curl_easy_strerror(response_code));
+	exit(EXIT_FAILURE);
     }
     else
     {
-	// parse_chunk_data(chunk.data);
-	struct json_object *parse_result = json_tokener_parse(chunk.data);
-	json_object_object_foreach(parse_result, key, val) {
-	    json_object *arr = NULL;
-	    json_object *price_object = NULL;
-	    json_object *instrument = NULL;
-	    json_object *price = NULL;
-	    json_object_object_get_ex(parse_result, key, &arr);
-	    int arrlen = json_object_array_length(arr);
-
-	    for (int i = 0; i < arrlen; i++) {
-		price_object = json_object_array_get_idx(arr, i);
-		json_object_object_get_ex(price_object, "instrument", &instrument);
-
-		json_object_object_get_ex(price_object, "bid", &price);
-		sparkline_prices[i].key = json_object_get_string(instrument);
-		sparkline_prices[i].value = json_object_get_double(price);
-	    }
-	}
-	// fprintf(stdout, "%s\n", chunk.data);
+	result = json_tokener_parse(chunk.data);
     }
 
     curl_easy_cleanup(curl_handle);
     curl_slist_free_all(slist);
     free(chunk.data);
     curl_global_cleanup();
+
+    return result;
+}
+
+struct price_map sparkline_prices[8];
+
+void
+pull_prices()
+{
+    char *url =
+	"https://api-fxtrade.oanda.com/v1/prices?instruments=EUR_USD%2CGBP_USD%2CUSD_JPY%2CUSD_CAD%2CUSD_CHF%2CSPX500_USD%2CXCU_USD%2CUSB30Y_USD";
+    struct json_object *parse_result = curl(url);
+    json_object_object_foreach(parse_result, key, val) {
+	json_object *arr = NULL;
+	json_object *price_object = NULL;
+	json_object *instrument = NULL;
+	json_object *price = NULL;
+	json_object_object_get_ex(parse_result, key, &arr);
+	int arrlen = json_object_array_length(arr);
+
+	for (int i = 0; i < arrlen; i++) {
+	    price_object = json_object_array_get_idx(arr, i);
+	    json_object_object_get_ex(price_object, "instrument", &instrument);
+
+	    json_object_object_get_ex(price_object, "bid", &price);
+	    sparkline_prices[i].key = json_object_get_string(instrument);
+	    sparkline_prices[i].value = json_object_get_double(price);
+	}
+    }
 }
 
 double account_balance = 0.0;
@@ -443,54 +487,19 @@ double bet_fraction = 0.0;
 void
 pull_balance()
 {
-    CURL *curl_handle;
-    char auth_header[100];
-    if (snprintf(auth_header, 100, "Authorization: Bearer %s", access_token) >= 100)
-    {
-	printf("Auth header overflow.");
-	exit(EXIT_FAILURE);
-    }
-
-    curl_global_init(CURL_GLOBAL_ALL);
-    curl_handle = curl_easy_init();
-
-    CURLcode response_code;
-    struct curl_slist *slist = NULL;
-    struct CurlData chunk;
-
-    chunk.data = malloc(1);
-    chunk.size = 0;
-
     char url[51];
     if (snprintf(url, 51, "https://api-fxtrade.oanda.com/v1/accounts/%s", account_id) >= 51)
     {
 	fprintf(stdout, "URL overflow.");
 	exit(EXIT_FAILURE);
     }
-    curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, http_callback);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
-    curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "console/1.0");
-    slist = curl_slist_append(slist, auth_header);
 
-    curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, slist);
-    response_code = curl_easy_perform(curl_handle);
+    json_object *balance_obj = NULL;
+    struct json_object *parse_result = curl(url);
 
-    if (response_code)
-    {
-	fprintf(stderr, "curl_easy_perform() failed: %s\n",
-		curl_easy_strerror(response_code));
-    }
-    else
-    {
-	json_object *balance_obj = NULL;
-	struct json_object *parse_result = json_tokener_parse(chunk.data);
-
-	json_object_object_get_ex(parse_result, "balance", &balance_obj);
-	account_balance = json_object_get_double(balance_obj);
-	bet_fraction = account_balance * 0.02;
-    }
-
+    json_object_object_get_ex(parse_result, "balance", &balance_obj);
+    account_balance = json_object_get_double(balance_obj);
+    bet_fraction = account_balance * 0.02;
 }
 
 void
@@ -499,9 +508,15 @@ draw_balance(SDL_Renderer *renderer,
 	     int y)
 {
     SDL_Color balance_color = {0xFF,0xFF,0xFF,0xAA};
+    SDL_Color label_color = {0x77,0xCC,0xDD,0xAA};
     char balance_string[8];
     snprintf(balance_string, 8, "%f", account_balance);
 
+    draw_text(renderer,
+	      "BALANCE",
+	      label_color,
+	      "fonts/Abel-Regular.ttf", 18,
+	      x - 75, y + 18);
     draw_text(renderer,
 	      balance_string,
 	      balance_color,
@@ -510,11 +525,95 @@ draw_balance(SDL_Renderer *renderer,
 
     char bet_fraction_string[6];
     snprintf(bet_fraction_string, 6, "%f", bet_fraction);
+
+    draw_text(renderer,
+	      "2%",
+	      label_color,
+	      "fonts/Abel-Regular.ttf", 18,
+	      x + 125, y + 18);
     draw_text(renderer,
 	      bet_fraction_string,
 	      balance_color,
 	      "fonts/Abel-Regular.ttf", 28,
-	      x + 50, y + 50);
+	      x + 150, y + 8);
+}
+
+void
+draw_candle(SDL_Renderer *renderer,
+	    int open,
+	    int high,
+	    int low,
+	    int close,
+	    int x, int y)
+{
+    SDL_SetRenderDrawColor(renderer, 0xFF,0xFF,0xFF,0xBB);
+    SDL_RenderDrawLine(renderer, x + 1, y, x + 1, y + 4);
+
+    SDL_SetRenderDrawColor(renderer, 0x00,0xFF,0x00,0xBB);
+    SDL_Rect candle_body = {x, y + 5, 3, 15};
+    SDL_RenderFillRect(renderer, &candle_body);
+
+    SDL_SetRenderDrawColor(renderer, 0xFF,0xFF,0xFF,0xBB);
+    SDL_RenderDrawLine(renderer, x + 1, y + 20, x + 1, y + 25);
+}
+
+void
+draw_action_button(SDL_Renderer *renderer)
+{
+    roundedRectangleRGBA(renderer,
+			 250, 200,
+			 50, 250,
+			 10,
+			 0x77, 0xCC, 0xDD, 0xAA);
+
+    SDL_Color label_color = {0x77,0xCC,0xDD,0xAA};
+    draw_text(renderer,
+	      "LONG",
+	      label_color,
+	      "fonts/Abel-Regular.ttf", 15,
+	      200, 200);
+}
+
+void
+draw_main_panel(SDL_Renderer *renderer)
+{
+    horizontal_separator(renderer,
+			 GRID_X_OFFSET, 50,
+			 200,
+			 0x66);
+    horizontal_separator(renderer,
+			 GRID_X_OFFSET, 56,
+			 200,
+			 0x66);
+
+    SDL_Color label_color = {0xCC,0xCC,0xCC,0xFF};
+    draw_text(renderer,
+	      "EUR USD",
+	      label_color,
+	      "fonts/Abel-Regular.ttf", 48,
+	      50, 50);
+}
+
+Uint32 my_callbackfunc(Uint32 interval, void *param)
+{
+    SDL_Event event;
+    SDL_UserEvent userevent;
+
+    /* In this example, our callback pushes an SDL_USEREVENT event
+    into the queue, and causes our callback to be called again at the
+    same interval: */
+
+    userevent.type = SDL_USEREVENT;
+    userevent.code = 0;
+    userevent.data1 = NULL;
+    userevent.data2 = NULL;
+
+    event.type = SDL_USEREVENT;
+    event.user = userevent;
+
+    SDL_PushEvent(&event);
+
+    return(interval);
 }
 
 int
@@ -535,14 +634,20 @@ main(int argc, char* argv[])
 	printf("Error initializing SDL: %s\n", SDL_GetError());
 	goto bail;
     }
+    Uint32 delay = 150;
+    // SDL_TimerID timer_id = SDL_AddTimer(delay, my_callbackfunc, NULL);
+    SDL_AddTimer(delay, my_callbackfunc, NULL);
 
     SDL_Window *window;
     SDL_Renderer *renderer;
 
-    SDL_CreateWindowAndRenderer(0, 0,
-				SDL_WINDOW_FULLSCREEN_DESKTOP,
-				&window,
-				&renderer);
+    window = SDL_CreateWindow("console",
+			      SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+			      0, 0,
+			      SDL_WINDOW_FULLSCREEN_DESKTOP);
+    renderer = SDL_CreateRenderer(window, -1,
+				  SDL_RENDERER_ACCELERATED |
+				  SDL_RENDERER_PRESENTVSYNC);
 
     if (!window)
     {
@@ -586,18 +691,39 @@ main(int argc, char* argv[])
 
 	draw_clock(renderer, 1313, 805);
 
-	draw_balance(renderer, 1000, 700);
+	draw_balance(renderer, 1200, 680);
+
+	draw_candle(renderer, 0, 0, 0, 0, 400, 400);
+	draw_candle(renderer, 0, 0, 0, 0, 405, 385);
+	draw_candle(renderer, 0, 0, 0, 0, 410, 370);
+
+	draw_main_panel(renderer);
+	draw_action_button(renderer);
+	int mouse_x, mouse_y;
+	SDL_GetMouseState(&mouse_x, &mouse_y);
+	SDL_Point mouse_position = {mouse_x, mouse_y};
+	SDL_Rect button_area = {50, 200, 200, 50};
+
+	if (SDL_PointInRect(&mouse_position, &button_area))
+	{
+	    roundedBoxRGBA(renderer,
+			   250, 200,
+			   50, 250,
+			   10,
+			   0x77, 0xCC, 0xDD, 0xAA);
+	}
 
 	SDL_RenderPresent(renderer);
 
-	// Handle events on queue
-	while (SDL_PollEvent(&e)) {
-	    if (e.type == SDL_QUIT || e.type == SDL_WINDOWEVENT_CLOSE)
+	if (SDL_WaitEvent(&e))
+	{
+	    switch (e.type)
 	    {
+	    case SDL_QUIT:
 		quit = true;
 	    }
+
 	}
-	SDL_Delay(80);
     }
 
     SDL_DestroyRenderer(renderer);
