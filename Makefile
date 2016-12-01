@@ -2,7 +2,7 @@ EXE = console
 
 CXX = clang
 CXXFLAGS = -Wall -c
-LDFLAGS = -lcurl -ljson-c -lSDL2 -lSDL2_ttf
+LDFLAGS = -lcurl -ljson-c -lSDL2 -lSDL2_ttf -lSDL2_gfx
 
 all: $(EXE)
 
