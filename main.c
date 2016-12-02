@@ -60,6 +60,7 @@ draw_grid(SDL_Renderer *renderer)
 }
 
 char *default_font = "fonts/Abel-Regular.ttf";
+char *smaller_font = "fonts/Lato-Bold.ttf";
 
 TTF_Font *
 init_font(const char *font_file, int size)
@@ -117,9 +118,9 @@ draw_clock(SDL_Renderer *renderer,
     draw_text(renderer,
 	      "GMT",
 	      label_color,
-	      default_font, 18,
+	      smaller_font, 14,
 	      x - 37,
-	      y + 18);
+	      y + 22);
     draw_text(renderer,
 	      the_time,
 	      clock_color,
@@ -127,7 +128,6 @@ draw_clock(SDL_Renderer *renderer,
 	      x, y);
     free(the_time);
 }
-
 
 void
 horizontal_separator(SDL_Renderer *renderer, int x, int y, int length, int alpha)
@@ -155,14 +155,6 @@ vertical_separator(SDL_Renderer *renderer, int x, int y, int length, int alpha)
     SDL_RenderDrawRect(renderer, &line_cap);
     line_cap.y = y + length - 1;
     SDL_RenderDrawRect(renderer, &line_cap);
-}
-
-void
-thick_separator(SDL_Renderer *renderer, int x, int y, int length)
-{
-    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0xAA);
-    SDL_Rect bar = {x, y, 4, length};
-    SDL_RenderFillRect(renderer, &bar);
 }
 
 void
@@ -228,19 +220,6 @@ draw_separators(SDL_Renderer *renderer)
 		       GRID_EDGE / 2,
 		       0x44);
 
-
-    horizontal_separator(renderer,
-			 GRID_X_OFFSET + GRID_EDGE * 31,
-			 GRID_Y_OFFSET + GRID_EDGE * 33 - 6,
-			 33 * GRID_EDGE,
-			 0x44);
-    horizontal_separator(renderer,
-			 GRID_X_OFFSET + GRID_EDGE * 31,
-			 GRID_Y_OFFSET + GRID_EDGE * 33,
-			 33 * GRID_EDGE,
-			 0x44);
-
-
 }
 
 void
@@ -250,16 +229,16 @@ draw_sparkline(SDL_Renderer *renderer,
    	       int x,
 	       int y)
 {
+
     SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0x66);
     int axis_height = 6 * GRID_EDGE;
     int axis_width = 15 * GRID_EDGE;
-    SDL_Rect left_axis = {x, y, 2, axis_height};
-    SDL_Rect bottom_axis = {x, y + axis_height, axis_width + 2, 2};
-    SDL_Rect right_axis = {x + axis_width, y, 2, axis_height};
 
-    SDL_Rect axes[3] = {left_axis, bottom_axis, right_axis};
-
-    SDL_RenderDrawRects(renderer, axes, 3);
+    roundedRectangleRGBA(renderer,
+			 x, y,
+			 x + axis_width, y + axis_height,
+			 3,
+			 0x77, 0xCC, 0xDD, 0xAA);
 
     SDL_Color instrument_color = {0x77,0xCC,0xDD,0xFF};
     SDL_Color price_color = {0xFF, 0xFF, 0xFF,0xFF};
@@ -288,24 +267,23 @@ draw_sparkline(SDL_Renderer *renderer,
 void
 draw_sparklines(SDL_Renderer *renderer, struct price_map sparkline_prices[])
 {
-    int sparkline_top = GRID_Y_OFFSET + 2 * GRID_EDGE;
+    int sparkline_top = GRID_Y_OFFSET + GRID_EDGE + 11;
     int sparkline_left = GRID_X_OFFSET + 32 * GRID_EDGE;
     int sparkline_right = GRID_X_OFFSET + 48 * GRID_EDGE;
     int offset = 7;
-    int left_edge = sparkline_left;
+    int left_edge = sparkline_left - 10;
     int multiplier = 0;
     const char *label = NULL;
 
-    for (int i = 0; i < 8; i++) {
-	if (i < 4) {
-	    left_edge = sparkline_left;
+    for (int i = 0; i < 10; i++) {
+	if (i < 5) {
+	    left_edge = sparkline_left - 10;
 	    multiplier = i;
 	}
 	else
 	{
 	    left_edge = sparkline_right;
-	    multiplier = i - 4;
-
+	    multiplier = i - 5;
 	}
 
 	label = sparkline_prices[i].key;
@@ -348,39 +326,35 @@ draw_sparklines(SDL_Renderer *renderer, struct price_map sparkline_prices[])
 		       left_edge,
 		       sparkline_top + multiplier * offset * GRID_EDGE);
     }
-    thick_separator(renderer,
-		    GRID_X_OFFSET + GRID_EDGE * 31 + 1,
-		    GRID_Y_OFFSET + GRID_EDGE * 2,
-		    GRID_EDGE * 6);
-    thick_separator(renderer,
-		    GRID_X_OFFSET + GRID_EDGE * 31 + 1,
-		    GRID_Y_OFFSET + GRID_EDGE * 9,
-		    GRID_EDGE * 6);
-    thick_separator(renderer,
-		    GRID_X_OFFSET + GRID_EDGE * 31 + 1,
-		    GRID_Y_OFFSET + GRID_EDGE * 16,
-		    GRID_EDGE * 6);
-    thick_separator(renderer,
-		    GRID_X_OFFSET + GRID_EDGE * 31 + 1,
-		    GRID_Y_OFFSET + GRID_EDGE * 23,
-		    GRID_EDGE * 6);
 
-    thick_separator(renderer,
-		    GRID_X_OFFSET + GRID_EDGE * 64 - 3,
-		    GRID_Y_OFFSET + GRID_EDGE * 2,
-		    GRID_EDGE * 6);
-    thick_separator(renderer,
-		    GRID_X_OFFSET + GRID_EDGE * 64 - 3,
-		    GRID_Y_OFFSET + GRID_EDGE * 9,
-		    GRID_EDGE * 6);
-    thick_separator(renderer,
-		    GRID_X_OFFSET + GRID_EDGE * 64 - 3,
-		    GRID_Y_OFFSET + GRID_EDGE * 16,
-		    GRID_EDGE * 6);
-    thick_separator(renderer,
-		    GRID_X_OFFSET + GRID_EDGE * 64 - 3,
-		    GRID_Y_OFFSET + GRID_EDGE * 23,
-		    GRID_EDGE * 6);
+
+    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0xAA);
+    SDL_Rect top_left_left = {
+	sparkline_left - GRID_EDGE,
+	GRID_Y_OFFSET + GRID_EDGE,
+	4,
+	200
+    };
+    SDL_Rect top_left_right = {
+	sparkline_left + 200,
+	GRID_Y_OFFSET + GRID_EDGE,
+	4,
+	200
+    };
+
+    SDL_Rect top_left_top = {
+	sparkline_left - GRID_EDGE + 2,
+	GRID_Y_OFFSET + GRID_EDGE,
+	200,
+	4
+    };
+
+    SDL_Rect borders[3] = {
+	top_left_left,
+	top_left_top,
+	top_left_right
+    };
+    SDL_RenderFillRects(renderer, borders, 3);
 }
 
 // See https://curl.haxx.se/libcurl/c/getinmemory.html
@@ -462,7 +436,7 @@ void
 pull_prices()
 {
     char *url =
-	"https://api-fxtrade.oanda.com/v1/prices?instruments=EUR_USD%2CGBP_USD%2CUSD_JPY%2CUSD_CAD%2CUSD_CHF%2CSPX500_USD%2CXCU_USD%2CUSB30Y_USD";
+	"https://api-fxtrade.oanda.com/v1/prices?instruments=EUR_USD%2CGBP_USD%2CUSD_JPY%2CUSD_CAD%2CUSD_CHF%2CSPX500_USD%2CXCU_USD%2CUSB30Y_USD%2CSOYBN_USD%2CNATGAS_USD";
     struct json_object *parse_result = curl(url);
     json_object_object_foreach(parse_result, key, val) {
 	json_object *arr = NULL;
@@ -513,17 +487,17 @@ draw_balance(SDL_Renderer *renderer,
     SDL_Color label_color = {0x77,0xCC,0xDD,0xAA};
     char balance_string[8];
     snprintf(balance_string, 8, "%f", account_balance);
-
+    int label_size = 14;
     draw_text(renderer,
 	      "BALANCE",
 	      label_color,
-	      default_font, 18,
-	      x - 75, y + 18);
+	      smaller_font, label_size,
+	      x, y);
     draw_text(renderer,
 	      balance_string,
 	      balance_color,
 	      default_font, 36,
-	      x, y);
+	      x, y + 12);
 
     char bet_fraction_string[6];
     snprintf(bet_fraction_string, 6, "%f", bet_fraction);
@@ -531,13 +505,13 @@ draw_balance(SDL_Renderer *renderer,
     draw_text(renderer,
 	      "2%",
 	      label_color,
-	      default_font, 18,
-	      x + 125, y + 18);
+	      smaller_font, label_size,
+	      x + 150, y);
     draw_text(renderer,
 	      bet_fraction_string,
 	      balance_color,
 	      default_font, 28,
-	      x + 150, y + 8);
+	      x + 150, y + 20);
 }
 
 void
@@ -545,7 +519,7 @@ draw_candle(SDL_Renderer *renderer,
 	    int open,
 	    int high,
 	    int low,
-	    int close,
+	    int closep,
 	    int x, int y)
 {
     SDL_SetRenderDrawColor(renderer, 0xFF,0xFF,0xFF,0xBB);
@@ -563,8 +537,8 @@ void
 draw_action_button(SDL_Renderer *renderer)
 {
     roundedRectangleRGBA(renderer,
-			 250, 200,
-			 50, 250,
+			 50, 600,
+			 250, 650,
 			 10,
 			 0x77, 0xCC, 0xDD, 0xAA);
 
@@ -573,24 +547,21 @@ draw_action_button(SDL_Renderer *renderer)
 	      "LONG",
 	      label_color,
 	      default_font, 15,
-	      200, 200);
+	      800, 200);
 }
 
 void
 draw_main_panel(SDL_Renderer *renderer)
 {
+    SDL_Color caption_color = {0x77,0xCC,0xDD,0xAA};
     SDL_Color label_color = {0xCC,0xCC,0xCC,0xFF};
     draw_text(renderer,
 	      "INSTRUMENT",
-	      label_color,
-	      default_font, 16,
-	      GRID_X_OFFSET, 34);
+	      caption_color,
+	      smaller_font, 14,
+	      GRID_X_OFFSET, 32);
     horizontal_separator(renderer,
 			 GRID_X_OFFSET, 50,
-			 200,
-			 0x66);
-    horizontal_separator(renderer,
-			 GRID_X_OFFSET, 56,
 			 200,
 			 0x66);
 
@@ -598,7 +569,61 @@ draw_main_panel(SDL_Renderer *renderer)
 	      "EUR USD",
 	      label_color,
 	      default_font, 48,
-	      50, 50);
+	      30, 47);
+
+    horizontal_separator(renderer,
+			 GRID_X_OFFSET, 105,
+			 250,
+			 0x66);
+    vertical_separator(renderer,
+		       GRID_X_OFFSET, 50,
+		       20,
+		       0x66);
+    vertical_separator(renderer,
+		       GRID_X_OFFSET, 85,
+		       20,
+		       0x66);
+
+
+    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0xAA);
+    int frame_width = GRID_EDGE * 30;
+    int frame_height = GRID_EDGE * 20;
+    int top_left_y = GRID_X_OFFSET + GRID_EDGE * 5;
+
+    SDL_Rect frame_left = {
+	GRID_X_OFFSET,
+        top_left_y,
+	2,
+	frame_height
+    };
+    SDL_Rect frame_right = {
+	GRID_X_OFFSET + frame_width,
+	top_left_y,
+	2,
+	frame_height
+    };
+
+    SDL_Rect frame_top = {
+	GRID_X_OFFSET + 1,
+	top_left_y - 1,
+	frame_width,
+	2
+    };
+    SDL_Rect frame_bottom = {
+	GRID_X_OFFSET + 1,
+	top_left_y + frame_height - 1,
+	frame_width,
+	2
+    };
+
+    SDL_Rect frame_rects[4] = {
+	frame_left,
+	frame_right,
+	frame_top,
+	frame_bottom
+    };
+
+    SDL_RenderFillRects(renderer, frame_rects, 4);
 }
 
 Uint32 my_callbackfunc(Uint32 interval, void *param)
@@ -698,7 +723,7 @@ main(int argc, char* argv[])
 
 	draw_clock(renderer, 1313, 805);
 
-	draw_balance(renderer, 1200, 680);
+	draw_balance(renderer, 800, 805);
 
 	draw_candle(renderer, 0, 0, 0, 0, 400, 400);
 	draw_candle(renderer, 0, 0, 0, 0, 405, 385);
