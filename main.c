@@ -59,10 +59,12 @@ draw_grid(SDL_Renderer *renderer)
     }
 }
 
+char *default_font = "fonts/Abel-Regular.ttf";
+
 TTF_Font *
 init_font(const char *font_file, int size)
 {
-    TTF_Font *font = TTF_OpenFont("fonts/Abel-Regular.ttf", size);
+    TTF_Font *font = TTF_OpenFont(font_file, size);
     if (!font)
     {
 	printf("Font error: %s\n", TTF_GetError());
@@ -115,13 +117,13 @@ draw_clock(SDL_Renderer *renderer,
     draw_text(renderer,
 	      "GMT",
 	      label_color,
-	      "fonts/Abel-Regular.ttf", 18,
+	      default_font, 18,
 	      x - 37,
 	      y + 18);
     draw_text(renderer,
 	      the_time,
 	      clock_color,
-	      "fonts/Abel-Regular.ttf", 36,
+	      default_font, 36,
 	      x, y);
     free(the_time);
 }
@@ -267,7 +269,7 @@ draw_sparkline(SDL_Renderer *renderer,
     draw_text(renderer,
 	      label,
 	      instrument_color,
-	      "fonts/Abel-Regular.ttf",
+	      default_font,
 	      title_size,
 	      x + 5, y + GRID_EDGE * 6 - title_size - 4);
 
@@ -278,7 +280,7 @@ draw_sparkline(SDL_Renderer *renderer,
     draw_text(renderer,
 	      price_label,
 	      price_color,
-	      "fonts/Abel-Regular.ttf",
+	      default_font,
 	      price_size,
 	      x + 262, y + GRID_EDGE * 6 - price_size - 5);
 }
@@ -515,12 +517,12 @@ draw_balance(SDL_Renderer *renderer,
     draw_text(renderer,
 	      "BALANCE",
 	      label_color,
-	      "fonts/Abel-Regular.ttf", 18,
+	      default_font, 18,
 	      x - 75, y + 18);
     draw_text(renderer,
 	      balance_string,
 	      balance_color,
-	      "fonts/Abel-Regular.ttf", 36,
+	      default_font, 36,
 	      x, y);
 
     char bet_fraction_string[6];
@@ -529,12 +531,12 @@ draw_balance(SDL_Renderer *renderer,
     draw_text(renderer,
 	      "2%",
 	      label_color,
-	      "fonts/Abel-Regular.ttf", 18,
+	      default_font, 18,
 	      x + 125, y + 18);
     draw_text(renderer,
 	      bet_fraction_string,
 	      balance_color,
-	      "fonts/Abel-Regular.ttf", 28,
+	      default_font, 28,
 	      x + 150, y + 8);
 }
 
@@ -570,13 +572,19 @@ draw_action_button(SDL_Renderer *renderer)
     draw_text(renderer,
 	      "LONG",
 	      label_color,
-	      "fonts/Abel-Regular.ttf", 15,
+	      default_font, 15,
 	      200, 200);
 }
 
 void
 draw_main_panel(SDL_Renderer *renderer)
 {
+    SDL_Color label_color = {0xCC,0xCC,0xCC,0xFF};
+    draw_text(renderer,
+	      "INSTRUMENT",
+	      label_color,
+	      default_font, 16,
+	      GRID_X_OFFSET, 34);
     horizontal_separator(renderer,
 			 GRID_X_OFFSET, 50,
 			 200,
@@ -586,11 +594,10 @@ draw_main_panel(SDL_Renderer *renderer)
 			 200,
 			 0x66);
 
-    SDL_Color label_color = {0xCC,0xCC,0xCC,0xFF};
     draw_text(renderer,
 	      "EUR USD",
 	      label_color,
-	      "fonts/Abel-Regular.ttf", 48,
+	      default_font, 48,
 	      50, 50);
 }
 
@@ -634,7 +641,7 @@ main(int argc, char* argv[])
 	printf("Error initializing SDL: %s\n", SDL_GetError());
 	goto bail;
     }
-    Uint32 delay = 150;
+    Uint32 delay = 250;
     // SDL_TimerID timer_id = SDL_AddTimer(delay, my_callbackfunc, NULL);
     SDL_AddTimer(delay, my_callbackfunc, NULL);
 
@@ -698,7 +705,7 @@ main(int argc, char* argv[])
 	draw_candle(renderer, 0, 0, 0, 0, 410, 370);
 
 	draw_main_panel(renderer);
-	draw_action_button(renderer);
+
 	int mouse_x, mouse_y;
 	SDL_GetMouseState(&mouse_x, &mouse_y);
 	SDL_Point mouse_position = {mouse_x, mouse_y};
@@ -711,6 +718,10 @@ main(int argc, char* argv[])
 			   50, 250,
 			   10,
 			   0x77, 0xCC, 0xDD, 0xAA);
+	}
+	else
+	{
+	    draw_action_button(renderer);
 	}
 
 	SDL_RenderPresent(renderer);
