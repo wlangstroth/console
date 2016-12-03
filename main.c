@@ -410,12 +410,10 @@ pull_prices(struct price_map sparkline_prices[], int count)
     }
 }
 
-double account_balance = 0.0;
-double bet_fraction = 0.0;
-
-void
+double
 pull_balance()
 {
+    double account_balance = 0.0;
     char url[51];
     if (snprintf(url, 51, "https://api-fxtrade.oanda.com/v1/accounts/%s", account_id) >= 51)
     {
@@ -428,11 +426,13 @@ pull_balance()
 
     json_object_object_get_ex(parse_result, "balance", &balance_obj);
     account_balance = json_object_get_double(balance_obj);
-    bet_fraction = account_balance * 0.02;
+
+    return account_balance;
 }
 
 void
 draw_balance(SDL_Renderer *renderer,
+	     double account_balance,
 	     int x,
 	     int y)
 {
@@ -452,6 +452,7 @@ draw_balance(SDL_Renderer *renderer,
 	      default_font, 36,
 	      x, y + 12);
 
+    double bet_fraction = account_balance * 0.02;
     char bet_fraction_string[6];
     snprintf(bet_fraction_string, 6, "%f", bet_fraction);
 
@@ -572,7 +573,7 @@ draw_main_panel(SDL_Renderer *renderer)
     SDL_RenderFillRects(renderer, frame_rects, 4);
 }
 
-Uint32 my_callbackfunc(Uint32 interval, void *param)
+Uint32 redraw_callback(Uint32 interval, void *param)
 {
     SDL_Event event;
     SDL_UserEvent userevent;
@@ -645,8 +646,7 @@ main(int argc, char* argv[])
 	goto bail;
     }
     Uint32 delay = 250;
-    // SDL_TimerID timer_id = SDL_AddTimer(delay, my_callbackfunc, NULL);
-    SDL_AddTimer(delay, my_callbackfunc, NULL);
+    SDL_AddTimer(delay, redraw_callback, NULL);
 
     SDL_Window *window;
     SDL_Renderer *renderer;
@@ -677,7 +677,7 @@ main(int argc, char* argv[])
     struct price_map sparkline_prices[10];
     pull_prices(sparkline_prices, 10);
 
-    pull_balance();
+    double account_balance = pull_balance();
 
     while (!quit)
     {
@@ -704,7 +704,7 @@ main(int argc, char* argv[])
 
 	draw_clock(renderer, 500, 70);
 
-	draw_balance(renderer, 450, 805);
+	draw_balance(renderer, account_balance, 450, 805);
 
 	draw_candle(renderer, 0, 0, 0, 0, 400, 400);
 	draw_candle(renderer, 0, 0, 0, 0, 405, 385);
