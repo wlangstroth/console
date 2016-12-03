@@ -29,6 +29,8 @@ struct CurlData {
     size_t size;
 };
 
+
+
 void
 draw_grid(SDL_Renderer *renderer)
 {
@@ -127,6 +129,8 @@ draw_clock(SDL_Renderer *renderer,
 	      default_font, 36,
 	      x, y);
     free(the_time);
+
+    // horizontal_separator(renderer, )
 }
 
 void
@@ -162,63 +166,48 @@ draw_separators(SDL_Renderer *renderer)
 {
     // Page top decoration
     horizontal_separator(renderer,
-		       GRID_X_OFFSET,
-		       GRID_Y_OFFSET,
-		       30 * GRID_EDGE,
-		       0x77);
+			 GRID_X_OFFSET,
+			 GRID_Y_OFFSET,
+			 32 * GRID_EDGE,
+			 0x77);
     horizontal_separator(renderer,
-		       GRID_X_OFFSET,
-		       GRID_Y_OFFSET + 6,
-		       30 * GRID_EDGE,
-		       0x44);
+			 GRID_X_OFFSET,
+			 GRID_Y_OFFSET + 6,
+			 32 * GRID_EDGE,
+			 0x44);
     horizontal_separator(renderer,
-		       698,
-		       GRID_Y_OFFSET,
-		       33 * GRID_EDGE,
-		       0x77);
+			 GRID_X_OFFSET + GRID_EDGE * 33,
+			 GRID_Y_OFFSET,
+			 31 * GRID_EDGE,
+			 0x77);
     horizontal_separator(renderer,
-		       698,
-		       GRID_Y_OFFSET + 6,
-		       33 * GRID_EDGE,
-		       0x44);
+			 GRID_X_OFFSET + GRID_EDGE * 33,
+			 GRID_Y_OFFSET + 6,
+			 31 * GRID_EDGE,
+			 0x44);
+
     // Page bottom decoration
     horizontal_separator(renderer,
-		       GRID_X_OFFSET,
-		       GRID_Y_OFFSET + GRID_EDGE * 39,
-		       30 * GRID_EDGE,
-		       0x44);
+			 GRID_X_OFFSET,
+			 GRID_Y_OFFSET + GRID_EDGE * 40,
+			 32 * GRID_EDGE,
+			 0x44);
     horizontal_separator(renderer,
-		       GRID_X_OFFSET,
-		       GRID_Y_OFFSET + 6 + GRID_EDGE * 39,
-		       30 * GRID_EDGE,
-		       0x44);
-    horizontal_separator(renderer,
-		       698,
-		       GRID_Y_OFFSET + GRID_EDGE * 39,
-		       33 * GRID_EDGE,
-		       0x44);
-    horizontal_separator(renderer,
-		       698,
-		       GRID_Y_OFFSET + 6 + GRID_EDGE * 39,
-		       33 * GRID_EDGE,
-		       0x44);
+			 GRID_X_OFFSET,
+			 GRID_Y_OFFSET + 6 + GRID_EDGE * 40,
+			 32 * GRID_EDGE,
+			 0x44);
 
-    // Clock baseline
     horizontal_separator(renderer,
-		       GRID_X_OFFSET + GRID_EDGE * 57,
-		       GRID_Y_OFFSET + GRID_EDGE * 38,
-		       6 * GRID_EDGE,
-		       0x44);
-    vertical_separator(renderer,
-		       GRID_X_OFFSET + GRID_EDGE * 57,
-		       GRID_Y_OFFSET + GRID_EDGE * 38,
-		       GRID_EDGE / 2,
-		       0x44);
-    vertical_separator(renderer,
-		       GRID_X_OFFSET + GRID_EDGE * 63,
-		       GRID_Y_OFFSET + GRID_EDGE * 38 - 11,
-		       GRID_EDGE / 2,
-		       0x44);
+			 GRID_X_OFFSET + GRID_EDGE * 33,
+			 GRID_Y_OFFSET + GRID_EDGE * 40,
+			 31 * GRID_EDGE,
+			 0x44);
+    horizontal_separator(renderer,
+			 GRID_X_OFFSET + GRID_EDGE * 33,
+			 GRID_Y_OFFSET + 6 + GRID_EDGE * 40,
+			 31 * GRID_EDGE,
+			 0x44);
 
 }
 
@@ -237,7 +226,7 @@ draw_sparkline(SDL_Renderer *renderer,
     roundedRectangleRGBA(renderer,
 			 x, y,
 			 x + axis_width, y + axis_height,
-			 3,
+			 2,
 			 0x77, 0xCC, 0xDD, 0xAA);
 
     SDL_Color instrument_color = {0x77,0xCC,0xDD,0xFF};
@@ -265,25 +254,28 @@ draw_sparkline(SDL_Renderer *renderer,
 }
 
 void
-draw_sparklines(SDL_Renderer *renderer, struct price_map sparkline_prices[])
+draw_sparklines(
+    SDL_Renderer *renderer,
+    struct price_map sparkline_prices[],
+    int count)
 {
-    int sparkline_top = GRID_Y_OFFSET + GRID_EDGE + 11;
-    int sparkline_left = GRID_X_OFFSET + 32 * GRID_EDGE;
-    int sparkline_right = GRID_X_OFFSET + 48 * GRID_EDGE;
+    int sparkline_top = GRID_Y_OFFSET + 3 * GRID_EDGE;
+    int sparkline_left = GRID_X_OFFSET + 33 * GRID_EDGE;
+    int sparkline_right = GRID_X_OFFSET + 49 * GRID_EDGE;
     int offset = 7;
-    int left_edge = sparkline_left - 10;
+    int left_edge = sparkline_left;
     int multiplier = 0;
     const char *label = NULL;
 
-    for (int i = 0; i < 10; i++) {
-	if (i < 5) {
-	    left_edge = sparkline_left - 10;
+    for (int i = 0; i < count; i++) {
+	if (i < count / 2) {
+	    left_edge = sparkline_left;
 	    multiplier = i;
 	}
 	else
 	{
 	    left_edge = sparkline_right;
-	    multiplier = i - 5;
+	    multiplier = i - count / 2;
 	}
 
 	label = sparkline_prices[i].key;
@@ -319,6 +311,14 @@ draw_sparklines(SDL_Renderer *renderer, struct price_map sparkline_prices[])
 	{
 	    label = "USD CHF";
 	}
+	if (!strcmp(label, "SOYBN_USD"))
+	{
+	    label = "SOYBEANS";
+	}
+	if (!strcmp(label, "NATGAS_USD"))
+	{
+	    label = "NATURAL GAS";
+	}
 
 	draw_sparkline(renderer,
 		       label,
@@ -326,35 +326,6 @@ draw_sparklines(SDL_Renderer *renderer, struct price_map sparkline_prices[])
 		       left_edge,
 		       sparkline_top + multiplier * offset * GRID_EDGE);
     }
-
-
-    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0xAA);
-    SDL_Rect top_left_left = {
-	sparkline_left - GRID_EDGE,
-	GRID_Y_OFFSET + GRID_EDGE,
-	4,
-	200
-    };
-    SDL_Rect top_left_right = {
-	sparkline_left + 200,
-	GRID_Y_OFFSET + GRID_EDGE,
-	4,
-	200
-    };
-
-    SDL_Rect top_left_top = {
-	sparkline_left - GRID_EDGE + 2,
-	GRID_Y_OFFSET + GRID_EDGE,
-	200,
-	4
-    };
-
-    SDL_Rect borders[3] = {
-	top_left_left,
-	top_left_top,
-	top_left_right
-    };
-    SDL_RenderFillRects(renderer, borders, 3);
 }
 
 // See https://curl.haxx.se/libcurl/c/getinmemory.html
@@ -430,29 +401,38 @@ curl(const char *url)
     return result;
 }
 
-struct price_map sparkline_prices[8];
+
 
 void
-pull_prices()
+pull_prices(struct price_map sparkline_prices[], int count)
 {
     char *url =
 	"https://api-fxtrade.oanda.com/v1/prices?instruments=EUR_USD%2CGBP_USD%2CUSD_JPY%2CUSD_CAD%2CUSD_CHF%2CSPX500_USD%2CXCU_USD%2CUSB30Y_USD%2CSOYBN_USD%2CNATGAS_USD";
     struct json_object *parse_result = curl(url);
-    json_object_object_foreach(parse_result, key, val) {
-	json_object *arr = NULL;
-	json_object *price_object = NULL;
-	json_object *instrument = NULL;
-	json_object *price = NULL;
-	json_object_object_get_ex(parse_result, key, &arr);
-	int arrlen = json_object_array_length(arr);
+    if (!parse_result) {
+	json_object_object_foreach(parse_result, key, val) {
+	    json_object *arr = NULL;
+	    json_object *price_object = NULL;
+	    json_object *instrument = NULL;
+	    json_object *price = NULL;
+	    json_object_object_get_ex(parse_result, key, &arr);
+	    // int arrlen = json_object_array_length(arr);
 
-	for (int i = 0; i < arrlen; i++) {
-	    price_object = json_object_array_get_idx(arr, i);
-	    json_object_object_get_ex(price_object, "instrument", &instrument);
+	    for (int i = 0; i < count; i++) {
+		price_object = json_object_array_get_idx(arr, i);
+		json_object_object_get_ex(price_object, "instrument", &instrument);
 
-	    json_object_object_get_ex(price_object, "bid", &price);
-	    sparkline_prices[i].key = json_object_get_string(instrument);
-	    sparkline_prices[i].value = json_object_get_double(price);
+		json_object_object_get_ex(price_object, "bid", &price);
+		sparkline_prices[i].key = json_object_get_string(instrument);
+		sparkline_prices[i].value = json_object_get_double(price);
+	    }
+	}
+    }
+    else
+    {
+	for (int i = 0; i < count; i++) {
+	    sparkline_prices[i].key = "INSTRUMENT";
+	    sparkline_prices[i].value = 0;
 	}
     }
 }
@@ -541,13 +521,6 @@ draw_action_button(SDL_Renderer *renderer)
 			 250, 650,
 			 10,
 			 0x77, 0xCC, 0xDD, 0xAA);
-
-    SDL_Color label_color = {0x77,0xCC,0xDD,0xAA};
-    draw_text(renderer,
-	      "LONG",
-	      label_color,
-	      default_font, 15,
-	      800, 200);
 }
 
 void
@@ -586,7 +559,7 @@ draw_main_panel(SDL_Renderer *renderer)
 
 
     SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0xAA);
-    int frame_width = GRID_EDGE * 30;
+    int frame_width = GRID_EDGE * 32;
     int frame_height = GRID_EDGE * 20;
     int top_left_y = GRID_X_OFFSET + GRID_EDGE * 5;
 
@@ -648,6 +621,38 @@ Uint32 my_callbackfunc(Uint32 interval, void *param)
     return(interval);
 }
 
+void
+draw_sparkline_labels(SDL_Renderer *renderer)
+{
+    SDL_Color caption_color = {0x77,0xCC,0xDD,0xAA};
+    horizontal_separator(renderer,
+			 GRID_X_OFFSET + 33 * GRID_EDGE,
+			 GRID_Y_OFFSET + 2 * GRID_EDGE + 10,
+			 GRID_EDGE * 15,
+			 0x66);
+
+    draw_text(renderer,
+	      "CURRENCIES",
+	      caption_color,
+	      smaller_font, 14,
+	      GRID_X_OFFSET + 33 * GRID_EDGE,
+	      GRID_Y_OFFSET + 2 * GRID_EDGE - 10);
+
+    horizontal_separator(renderer,
+			 GRID_X_OFFSET + 49 * GRID_EDGE,
+			 GRID_Y_OFFSET + 2 * GRID_EDGE + 10,
+			 GRID_EDGE * 15,
+			 0x66);
+
+    draw_text(renderer,
+	      "CFDs",
+	      caption_color,
+	      smaller_font, 14,
+	      GRID_X_OFFSET + 49 * GRID_EDGE,
+	      GRID_Y_OFFSET + 2 * GRID_EDGE - 10);
+
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -696,7 +701,9 @@ main(int argc, char* argv[])
     bool quit = false;
     SDL_Event e;
 
-    pull_prices();
+    struct price_map sparkline_prices[10];
+    pull_prices(sparkline_prices, 10);
+
     pull_balance();
 
     while (!quit)
@@ -713,17 +720,19 @@ main(int argc, char* argv[])
 
 	if (ticks - last_curl > 5000)
 	{
-	    pull_prices();
+	    pull_prices(sparkline_prices, 10);
 	    last_curl = SDL_GetTicks();
 	}
 
 	draw_separators(renderer);
+	draw_sparkline_labels(renderer);
 
-	draw_sparklines(renderer, sparkline_prices);
 
-	draw_clock(renderer, 1313, 805);
+	draw_sparklines(renderer, sparkline_prices, 10);
 
-	draw_balance(renderer, 800, 805);
+	draw_clock(renderer, 500, 70);
+
+	draw_balance(renderer, 450, 805);
 
 	draw_candle(renderer, 0, 0, 0, 0, 400, 400);
 	draw_candle(renderer, 0, 0, 0, 0, 405, 385);
