@@ -409,7 +409,7 @@ pull_prices(struct price_map sparkline_prices[], int count)
     char *url =
 	"https://api-fxtrade.oanda.com/v1/prices?instruments=EUR_USD%2CGBP_USD%2CUSD_JPY%2CUSD_CAD%2CUSD_CHF%2CSPX500_USD%2CXCU_USD%2CUSB30Y_USD%2CSOYBN_USD%2CNATGAS_USD";
     struct json_object *parse_result = curl(url);
-    if (!parse_result) {
+    if (parse_result) {
 	json_object_object_foreach(parse_result, key, val) {
 	    json_object *arr = NULL;
 	    json_object *price_object = NULL;
@@ -726,7 +726,6 @@ main(int argc, char* argv[])
 
 	draw_separators(renderer);
 	draw_sparkline_labels(renderer);
-
 
 	draw_sparklines(renderer, sparkline_prices, 10);
 
