@@ -503,7 +503,9 @@ main(int argc, char* argv[])
 {
     int result = EXIT_FAILURE;
 
+    Uint32 ticks = 0;
     Uint32 last_price_poll = 0;
+    Uint32 last_balance_poll = 0;
 
     if (TTF_Init()) {
 	printf("TTF_Init: %s\n", TTF_GetError());
@@ -515,6 +517,7 @@ main(int argc, char* argv[])
 	printf("Error initializing SDL: %s\n", SDL_GetError());
 	goto bail;
     }
+
     Uint32 delay = 250;
     SDL_AddTimer(delay, redraw_callback, NULL);
 
@@ -559,10 +562,17 @@ main(int argc, char* argv[])
 
 	draw_grid(renderer);
 
-	if (SDL_GetTicks() - last_price_poll > 5000)
+	ticks = SDL_GetTicks();
+
+	if (ticks - last_price_poll > 5000)
 	{
 	    oanda_prices(sparkline_prices, 10);
-	    last_price_poll = SDL_GetTicks();
+	    last_price_poll = ticks;
+	}
+
+	if (ticks - last_balance_poll > 60000)
+	{
+	    last_balance_poll = ticks;
 	}
 
 	draw_separators(renderer);
