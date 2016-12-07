@@ -1,8 +1,9 @@
 // -----------------------------------------------------------------------------
 // CONSOLE
 //
+//
 #include "console.h"
-#include "secrets.h"
+#include "oanda.h"
 
 void
 draw_grid(SDL_Renderer *renderer)
@@ -229,10 +230,10 @@ draw_sparkline(SDL_Renderer *renderer,
 void
 draw_sparklines(
     SDL_Renderer *renderer,
-    struct price_map sparkline_prices[],
+    price_map sparkline_prices[],
     int count)
 {
-    int sparkline_top = GRID_Y_OFFSET + 3 * GRID_EDGE;
+    int sparkline_top = GRID_Y_OFFSET + 2 * GRID_EDGE;
     int sparkline_left = GRID_X_OFFSET + 33 * GRID_EDGE;
     int sparkline_right = GRID_X_OFFSET + 49 * GRID_EDGE;
     int offset = 7;
@@ -301,135 +302,6 @@ draw_sparklines(
     }
 }
 
-// See https://curl.haxx.se/libcurl/c/getinmemory.html
-static size_t
-http_callback(void *contents, size_t size, size_t nmemb, void *userp)
-{
-    size_t realsize = size * nmemb;
-    struct CurlData *mem = (struct CurlData *)userp;
-
-    mem->data = realloc(mem->data, mem->size + realsize + 1);
-    if (mem->data == NULL)
-    {
-	printf("not enough data (realloc returned NULL)\n");
-	return 0;
-    }
-
-    memcpy(&(mem->data[mem->size]), contents, realsize);
-    mem->size += realsize;
-    mem->data[mem->size] = 0;
-
-    return realsize;
-}
-
-struct json_object *
-curl(const char *url)
-{
-    CURL *curl_handle;
-    char auth_header[100];
-    struct json_object *result = NULL;
-
-    if (snprintf(auth_header, 100, "Authorization: Bearer %s", access_token) >= 100)
-    {
-	printf("Auth header overflow.");
-	exit(EXIT_FAILURE);
-    }
-
-    curl_global_init(CURL_GLOBAL_ALL);
-    curl_handle = curl_easy_init();
-
-    CURLcode response_code;
-    struct curl_slist *slist = NULL;
-    struct CurlData chunk;
-
-    chunk.data = malloc(1);
-    chunk.size = 0;
-
-    curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, http_callback);
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
-    curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "console/1.0");
-
-    slist = curl_slist_append(slist, auth_header);
-    curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, slist);
-
-    response_code = curl_easy_perform(curl_handle);
-
-    if (response_code)
-    {
-	fprintf(stderr, "curl_easy_perform() failed: %s\n",
-		curl_easy_strerror(response_code));
-	exit(EXIT_FAILURE);
-    }
-    else
-    {
-	result = json_tokener_parse(chunk.data);
-    }
-
-    curl_easy_cleanup(curl_handle);
-    curl_slist_free_all(slist);
-    free(chunk.data);
-    curl_global_cleanup();
-
-    return result;
-}
-
-
-
-void
-pull_prices(struct price_map sparkline_prices[], int count)
-{
-    char *url =
-	"https://api-fxtrade.oanda.com/v1/prices?instruments=EUR_USD%2CGBP_USD%2CUSD_JPY%2CUSD_CAD%2CUSD_CHF%2CSPX500_USD%2CXCU_USD%2CUSB30Y_USD%2CSOYBN_USD%2CNATGAS_USD";
-    struct json_object *parse_result = curl(url);
-    if (parse_result) {
-	json_object_object_foreach(parse_result, key, val) {
-	    json_object *arr = NULL;
-	    json_object *price_object = NULL;
-	    json_object *instrument = NULL;
-	    json_object *price = NULL;
-	    json_object_object_get_ex(parse_result, key, &arr);
-	    // int arrlen = json_object_array_length(arr);
-
-	    for (int i = 0; i < count; i++) {
-		price_object = json_object_array_get_idx(arr, i);
-		json_object_object_get_ex(price_object, "instrument", &instrument);
-
-		json_object_object_get_ex(price_object, "bid", &price);
-		sparkline_prices[i].key = json_object_get_string(instrument);
-		sparkline_prices[i].value = json_object_get_double(price);
-	    }
-	}
-    }
-    else
-    {
-	for (int i = 0; i < count; i++) {
-	    sparkline_prices[i].key = "INSTRUMENT";
-	    sparkline_prices[i].value = 0;
-	}
-    }
-}
-
-double
-pull_balance()
-{
-    double account_balance = 0.0;
-    char url[51];
-    if (snprintf(url, 51, "https://api-fxtrade.oanda.com/v1/accounts/%s", account_id) >= 51)
-    {
-	fprintf(stdout, "URL overflow.");
-	exit(EXIT_FAILURE);
-    }
-
-    json_object *balance_obj = NULL;
-    struct json_object *parse_result = curl(url);
-
-    json_object_object_get_ex(parse_result, "balance", &balance_obj);
-    account_balance = json_object_get_double(balance_obj);
-
-    return account_balance;
-}
-
 void
 draw_balance(SDL_Renderer *renderer,
 	     double account_balance,
@@ -460,7 +332,7 @@ draw_balance(SDL_Renderer *renderer,
 	      "2%",
 	      label_color,
 	      smaller_font, label_size,
-	      x + 150, y);
+	      x + 150, y + 5);
     draw_text(renderer,
 	      bet_fraction_string,
 	      balance_color,
@@ -601,7 +473,7 @@ draw_sparkline_labels(SDL_Renderer *renderer)
     SDL_Color caption_color = {0x77,0xCC,0xDD,0xAA};
     horizontal_separator(renderer,
 			 GRID_X_OFFSET + 33 * GRID_EDGE,
-			 GRID_Y_OFFSET + 2 * GRID_EDGE + 10,
+			 GRID_Y_OFFSET + GRID_EDGE + 10,
 			 GRID_EDGE * 15,
 			 0x66);
 
@@ -610,11 +482,11 @@ draw_sparkline_labels(SDL_Renderer *renderer)
 	      caption_color,
 	      smaller_font, 14,
 	      GRID_X_OFFSET + 33 * GRID_EDGE,
-	      GRID_Y_OFFSET + 2 * GRID_EDGE - 10);
+	      GRID_Y_OFFSET + GRID_EDGE - 6);
 
     horizontal_separator(renderer,
 			 GRID_X_OFFSET + 49 * GRID_EDGE,
-			 GRID_Y_OFFSET + 2 * GRID_EDGE + 10,
+			 GRID_Y_OFFSET + GRID_EDGE + 10,
 			 GRID_EDGE * 15,
 			 0x66);
 
@@ -623,8 +495,7 @@ draw_sparkline_labels(SDL_Renderer *renderer)
 	      caption_color,
 	      smaller_font, 14,
 	      GRID_X_OFFSET + 49 * GRID_EDGE,
-	      GRID_Y_OFFSET + 2 * GRID_EDGE - 10);
-
+	      GRID_Y_OFFSET + GRID_EDGE - 6);
 }
 
 int
@@ -632,8 +503,7 @@ main(int argc, char* argv[])
 {
     int result = EXIT_FAILURE;
 
-    Uint32 ticks = 0;
-    Uint32 last_curl = 0;
+    Uint32 last_price_poll = 0;
 
     if (TTF_Init()) {
 	printf("TTF_Init: %s\n", TTF_GetError());
@@ -674,10 +544,10 @@ main(int argc, char* argv[])
     bool quit = false;
     SDL_Event e;
 
-    struct price_map sparkline_prices[10];
-    pull_prices(sparkline_prices, 10);
+    price_map sparkline_prices[10];
+    oanda_prices(sparkline_prices, 10);
 
-    double account_balance = pull_balance();
+    double account_balance = oanda_balance();
 
     while (!quit)
     {
@@ -689,12 +559,10 @@ main(int argc, char* argv[])
 
 	draw_grid(renderer);
 
-	ticks = SDL_GetTicks();
-
-	if (ticks - last_curl > 5000)
+	if (SDL_GetTicks() - last_price_poll > 5000)
 	{
-	    pull_prices(sparkline_prices, 10);
-	    last_curl = SDL_GetTicks();
+	    oanda_prices(sparkline_prices, 10);
+	    last_price_poll = SDL_GetTicks();
 	}
 
 	draw_separators(renderer);
