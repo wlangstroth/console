@@ -1,16 +1,17 @@
 EXE = console
-
-CXX = clang
-CXXFLAGS = -Wall -c
+CC = clang
+CFLAGS = -Wall -c
 LDFLAGS = -lcurl -ljson-c -lSDL2 -lSDL2_ttf -lSDL2_gfx
+SRC = main.c oanda.c
+OBJ = $(SRC:.c=.o)
 
-all: $(EXE)
+all: $(SRC) $(EXE)
 
-$(EXE): main.o
-	$(CXX) $(LDFLAGS) $< -o $@
+$(EXE): $(OBJ)
+	$(CC) $(LDFLAGS) $(OBJ) -o $@
 
-main.o: main.c
-	$(CXX) $(CXXFLAGS) $< -o $@
+.c.o:
+	$(CC) $(CFLAGS) $< -o $@
 
 clean:
 	rm *.o && rm $(EXE)
