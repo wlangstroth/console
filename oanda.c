@@ -80,22 +80,26 @@ oanda_prices(price_map sparkline_prices[], int count)
     char *url =
 	"https://api-fxtrade.oanda.com/v1/prices?instruments=EUR_USD%2CGBP_USD%2CUSD_JPY%2CUSD_CAD%2CUSD_CHF%2CSPX500_USD%2CXCU_USD%2CUSB30Y_USD%2CSOYBN_USD%2CNATGAS_USD";
     struct json_object *parse_result = curl(url);
+    double price = 0.0;
     if (parse_result) {
 	json_object_object_foreach(parse_result, key, val) {
 	    json_object *arr = NULL;
 	    json_object *price_object = NULL;
 	    json_object *instrument = NULL;
-	    json_object *price = NULL;
+	    json_object *bid_price = NULL;
+	    json_object *ask_price = NULL;
 	    json_object_object_get_ex(parse_result, key, &arr);
-	    // int arrlen = json_object_array_length(arr);
 
 	    for (int i = 0; i < count; i++) {
 		price_object = json_object_array_get_idx(arr, i);
 		json_object_object_get_ex(price_object, "instrument", &instrument);
 
-		json_object_object_get_ex(price_object, "bid", &price);
+		json_object_object_get_ex(price_object, "bid", &bid_price);
+		json_object_object_get_ex(price_object, "ask", &ask_price);
+		price = (json_object_get_double(bid_price)
+			 + json_object_get_double(ask_price)) / 2;
 		sparkline_prices[i].key = json_object_get_string(instrument);
-		sparkline_prices[i].value = json_object_get_double(price);
+		sparkline_prices[i].value = price;
 	    }
 	}
     }

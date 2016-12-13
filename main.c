@@ -5,38 +5,10 @@
 #include "console.h"
 #include "oanda.h"
 
-void
-draw_grid(SDL_Renderer *renderer)
-{
-    int i, j;
-
-    int grid_alpha = 0x22;
-    int over_alpha = 0x11;
-
-    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, grid_alpha);
-    for (i = GRID_X_OFFSET; i < SCREEN_WIDTH; i += GRID_EDGE)
-    {
-	for (j = GRID_Y_OFFSET; j < SCREEN_HEIGHT; j += GRID_EDGE)
-	{
-	    SDL_Rect dot = {i, j, 2, 2};
-	    SDL_RenderDrawRect(renderer, &dot);
-	}
-    }
-
-    // Draw the light grid
-    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, over_alpha);
-    for (i = GRID_X_OFFSET; i < SCREEN_WIDTH; i += GRID_EDGE * 2)
-    {
-	for (j = GRID_Y_OFFSET; j < SCREEN_HEIGHT; j += GRID_EDGE * 2)
-	{
-	    SDL_Rect dot = {i, j, 2, 2};
-	    SDL_RenderDrawRect(renderer, &dot);
-	}
-    }
-}
 
 char *default_font = "fonts/Abel-Regular.ttf";
 char *smaller_font = "fonts/Lato-Bold.ttf";
+
 
 TTF_Font *
 init_font(const char *font_file, int size)
@@ -73,6 +45,36 @@ draw_text(SDL_Renderer *renderer,
     SDL_FreeSurface(text_surface);
     SDL_DestroyTexture(texture);
     TTF_CloseFont(font);
+}
+
+void
+draw_grid(SDL_Renderer *renderer)
+{
+    int i, j;
+
+    int grid_alpha = 0x22;
+    int over_alpha = 0x11;
+
+    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, grid_alpha);
+    for (i = GRID_X_OFFSET; i < SCREEN_WIDTH; i += GRID_EDGE)
+    {
+	for (j = GRID_Y_OFFSET; j < SCREEN_HEIGHT; j += GRID_EDGE)
+	{
+	    SDL_Rect dot = {i, j, 2, 2};
+	    SDL_RenderDrawRect(renderer, &dot);
+	}
+    }
+
+    // Draw the light grid
+    SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, over_alpha);
+    for (i = GRID_X_OFFSET; i < SCREEN_WIDTH; i += GRID_EDGE * 2)
+    {
+	for (j = GRID_Y_OFFSET; j < SCREEN_HEIGHT; j += GRID_EDGE * 2)
+	{
+	    SDL_Rect dot = {i, j, 2, 2};
+	    SDL_RenderDrawRect(renderer, &dot);
+	}
+    }
 }
 
 void
@@ -182,7 +184,6 @@ draw_separators(SDL_Renderer *renderer)
 			 GRID_Y_OFFSET + 6 + GRID_EDGE * 40,
 			 31 * GRID_EDGE,
 			 0x44);
-
 }
 
 void
@@ -192,7 +193,6 @@ draw_sparkline(SDL_Renderer *renderer,
    	       int x,
 	       int y)
 {
-
     SDL_SetRenderDrawColor(renderer, 0x77, 0xCC, 0xDD, 0x66);
     int axis_height = 6 * GRID_EDGE;
     int axis_width = 15 * GRID_EDGE;
@@ -445,7 +445,8 @@ draw_main_panel(SDL_Renderer *renderer)
     SDL_RenderFillRects(renderer, frame_rects, 4);
 }
 
-Uint32 redraw_callback(Uint32 interval, void *param)
+Uint32
+event_callback(Uint32 interval, void *param)
 {
     SDL_Event event;
     SDL_UserEvent userevent;
@@ -503,9 +504,21 @@ main(int argc, char* argv[])
 {
     int result = EXIT_FAILURE;
 
-    Uint32 ticks = 0;
-    Uint32 last_price_poll = 0;
-    Uint32 last_balance_poll = 0;
+    Uint32	ticks		  = 0;
+    Uint32	redraw_delay	  = 250;
+    Uint32      price_delay       = 5000;
+    Uint32      balance_delay     = 60000;
+    Uint32	last_price_poll	  = 0;
+    Uint32	last_balance_poll = 0;
+
+    bool	quit = false;
+    SDL_Event	e;
+
+    SDL_Window		*window;
+    SDL_Renderer	*renderer;
+
+    price_map	sparkline_prices[10];
+    double	account_balance = oanda_balance();
 
     if (TTF_Init()) {
 	printf("TTF_Init: %s\n", TTF_GetError());
@@ -518,11 +531,9 @@ main(int argc, char* argv[])
 	goto bail;
     }
 
-    Uint32 delay = 250;
-    SDL_AddTimer(delay, redraw_callback, NULL);
-
-    SDL_Window *window;
-    SDL_Renderer *renderer;
+    SDL_AddTimer(redraw_delay, event_callback, (void *)NULL);
+    // SDL_AddTimer(price_delay, event_callback, (void *)NULL);
+    // SDL_AddTimer(balance_delay, event_callback, (void *)NULL);
 
     window = SDL_CreateWindow("console",
 			      SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -544,13 +555,7 @@ main(int argc, char* argv[])
 	goto bail;
     }
 
-    bool quit = false;
-    SDL_Event e;
-
-    price_map sparkline_prices[10];
     oanda_prices(sparkline_prices, 10);
-
-    double account_balance = oanda_balance();
 
     while (!quit)
     {
@@ -564,13 +569,15 @@ main(int argc, char* argv[])
 
 	ticks = SDL_GetTicks();
 
-	if (ticks - last_price_poll > 5000)
+	// Poll for prices every 5s
+	if (ticks - last_price_poll > price_delay)
 	{
 	    oanda_prices(sparkline_prices, 10);
 	    last_price_poll = ticks;
 	}
 
-	if (ticks - last_balance_poll > 60000)
+	// Poll for balance every min
+	if (ticks - last_balance_poll > balance_delay)
 	{
 	    last_balance_poll = ticks;
 	}
@@ -582,7 +589,7 @@ main(int argc, char* argv[])
 
 	draw_clock(renderer, 500, 70);
 
-	draw_balance(renderer, account_balance, 450, 805);
+	draw_balance(renderer, account_balance, 1200, 815);
 
 	draw_candle(renderer, 0, 0, 0, 0, 400, 400);
 	draw_candle(renderer, 0, 0, 0, 0, 405, 385);
@@ -620,7 +627,6 @@ main(int argc, char* argv[])
 
 	}
     }
-
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     result = EXIT_SUCCESS;
