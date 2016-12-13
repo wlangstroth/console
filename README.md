@@ -7,6 +7,9 @@ Trading console for OANDA's API, made with SDL. And love. But mostly SDL.
 
 Haven't set up real configuration yet, so it's just a file called "secrets.h".
 
+## Fonts
+
+The fonts are free from Google Fonts, and they're in a `fonts/` directory.
 
 ## Warning
 
