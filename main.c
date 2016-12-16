@@ -445,6 +445,9 @@ draw_main_panel(SDL_Renderer *renderer)
     SDL_RenderFillRects(renderer, frame_rects, 4);
 }
 
+/*
+ * See the SDL2 wiki
+ */
 Uint32
 event_callback(Uint32 interval, void *param)
 {
@@ -504,20 +507,20 @@ main(int argc, char* argv[])
 {
     int result = EXIT_FAILURE;
 
-    Uint32    ticks          = 0;
-    Uint32    redraw_delay      = 250;
-    Uint32      price_delay       = 5000;
-    Uint32      balance_delay     = 60000;
-    Uint32    last_price_poll      = 0;
-    Uint32    last_balance_poll = 0;
+    Uint32 ticks             = 0;
+    Uint32 redraw_delay      = 250;
+    Uint32 price_delay       = 5000;
+    Uint32 balance_delay     = 60000;
+    Uint32 last_price_poll   = 0;
+    Uint32 last_balance_poll = 0;
 
-    bool    quit = false;
-    SDL_Event    e;
+    bool      quit = false;
+    SDL_Event e;
 
-    SDL_Window        *window;
-    SDL_Renderer    *renderer;
+    SDL_Window   *window;
+    SDL_Renderer *renderer;
 
-    price_map    sparkline_prices[10];
+    price_map sparkline_prices[10];
     double    account_balance = oanda_balance();
 
     if (TTF_Init()) {
